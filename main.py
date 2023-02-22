@@ -1,6 +1,6 @@
 import requests
 import os
-from dotenv import load_dotenv
+from decouple import config
 import discord
 from discord import Embed
 from discord.ext.commands import Bot
@@ -9,18 +9,19 @@ import json
 import DiscordUtils
 from datetime import datetime
 from bs4 import BeautifulSoup
+import certifi
+import ssl
 intents = discord.Intents.default()
 intents.members = True
 
 bot = Bot(command_prefix='?', intents=intents)
 bot.remove_command('help')
-load_dotenv()
 
 async def techDealsIn():
-    channelId = bot.get_channel(1044260095422365697)
+    channelId = bot.get_channel(1053082212066660395)
     URL = "https://techdeals.in/"
     r = requests.get(URL)
-    soup = BeautifulSoup(r.content, 'html5lib')
+    soup = BeautifulSoup(r.content, 'lxml')
     name = soup.find_all('h3', attrs = {'class':'fontnormal mb10 mt0 lineheight25'}) 
     place = soup.find_all('div', attrs = {'class':'mb10 compare-domain-icon'})
     price = soup.find_all('span', attrs = {'class':'woocommerce-Price-amount amount'}) 
@@ -77,4 +78,4 @@ async def on_ready():
     print("build successfully")
     main.start()
     
-bot.run(os.getenv('DISCORD-TOKEN')) 
+bot.run(config("DISCORD-TOKEN")) 
