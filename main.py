@@ -11,14 +11,17 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import certifi
 import ssl
+import email_alerts
 intents = discord.Intents.default()
 intents.members = True
 
 bot = Bot(command_prefix='?', intents=intents)
 bot.remove_command('help')
 
+CHANNEL_ID = 1053082212066660395
+
 async def techDealsIn():
-    channelId = bot.get_channel(1053082212066660395)
+    channelId = bot.get_channel(CHANNEL_ID)
     URL = "https://techdeals.in/"
     r = requests.get(URL)
     soup = BeautifulSoup(r.content, 'lxml')
@@ -32,6 +35,7 @@ async def techDealsIn():
                 dataEmbed = Embed(title=name[i].text.strip(), description=place[i].text.strip() + " [view more](https://techdeals.in/)", timestamp=datetime.utcnow(), color=0x5865F2)
                 dataEmbed.add_field(name="price", value=price[i].text.strip())
                 await channelId.send(embed=dataEmbed)
+                email_alerts.log_deal(name[i].text.strip(), place[i].text.strip(), price[i].text.strip())
             tempVar = name[len(name)-1].text
             data["lastDeal"] = tempVar
             f.seek(0)
@@ -40,7 +44,15 @@ async def techDealsIn():
 @tasks.loop(minutes=1)
 async def main():
     await techDealsIn() # calls function that gets data from techdeals.in and sends in teh channel specified
-            
+
+@tasks.loop(hours=24)
+async def weeklyEmailDigest():
+    await email_alerts.maybe_send_weekly_digest()
+
+@tasks.loop(minutes=30)
+async def emailReplyCheck():
+    await email_alerts.check_email_replies_and_scrape(bot, CHANNEL_ID)
+
 @bot.command()
 async def amazon(ctx, *, game):
     with open("search_results_urls.txt", "a") as f:
@@ -77,5 +89,7 @@ async def amazon(ctx, *, game):
 async def on_ready():
     print("build successfully")
     main.start()
-    
+    weeklyEmailDigest.start()
+    emailReplyCheck.start()
+
 bot.run(config("DISCORD-TOKEN")) 
